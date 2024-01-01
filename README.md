@@ -89,15 +89,20 @@ sudo perf script > macVLAN.txt
 
 
 
-# IPVLAN Mode:
-Remove previous network:
+# IPVLAN Mode (L3):
+Docker IPVLAN networking works by creating a virtual network interface for each container that shares the same MAC address and IP address range as the parent interface on the host. This allows the containers to communicate with other devices on the same network without using NAT or port mapping.
+
+There are two modes of IPVLAN networking: L2 and L3. In L2 mode, the containers use ARP to resolve the IP addresses of other devices on the network. In L3 mode, the containers use IP routing to forward packets to other devices on the network.
+
+To create an ipvlan network, first you need to remove previous network:
 ```
 docker stop c3 c4
 docker network rm my_macvlan
 docker network create -d ipvlan --subnet $YOUR_SUBNET --gateway $YOUR_GATEWAY -o parent=enp0s3 my_ipvlan
 ```
 
-create a container and start our custom server:
+Then, you need to specify the driver, the subnet, the gateway, and the parent interface. For example, to create an IPVLAN network named my_ipvlan, associated with the enp0s3 interface on the Docker host, you can use the following command:
+
 ```
 YOUR_SUBNET=192.168.8.0/24
 YOUR_GATEWAY=192.168.8.1
@@ -111,10 +116,10 @@ docker exec -it c5 python app/server.py
 
 Now run the commands below in another terminal to flood tcp messages:
 ```
-docker exec -it c6 python app/client.py 192.168.8.245
+docker exec -it c6 python app/client.py $CUSTOM_IP_ADDRESS
 ```
 
-And start tracing:
+Then start tracing and save results to a text file:
 ```
 sudo perf record -ae 'net:*' --call-graph fp -- sleep 5
 sudo perf script > ipVLAN.txt
