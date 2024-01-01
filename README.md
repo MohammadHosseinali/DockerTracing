@@ -57,7 +57,10 @@ sudo perf script > normal.txt
 
 	
 # macVLAN:
-First you need to choose an unused ip from your router ip range and set these variables:
+Docker MACVLAN networking works by assigning a unique MAC address to each container's virtual network interface, making it appear to be a physical device on the network. This allows the containers to communicate with other devices on the same network, without using NAT or port mapping.
+
+To create a MACVLAN network, you need to specify the driver, the subnet, the gateway, and the parent interface. You can also use the ip-range and aux-addresses options to exclude some IP addresses from being used by the containers. For example, to create a MACVLAN network, First you need to choose an unused ip from your router ip range and you can use these variables:
+
 ```
 YOUR_SUBNET=192.168.8.0/24        # your network subnet 
 YOUR_GATEWAY=192.168.8.1          # your router gateway
@@ -65,17 +68,17 @@ CUSTOM_IP_ADDRESS=192.168.8.245    # server ip
 CUSTOM_IP_ADDRESS_2=192.168.8.246    # client ip
 ```
 
-and then create a docker network on your subnet (Your VM should be on bridge mode):
+To create a docker network on your subnet (Your VM should be on bridge mode):
 ```
 docker network create -d macvlan --subnet $YOUR_SUBNET --gateway $YOUR_GATEWAY -o parent=enp0s3 my_macvlan
 docker run -itd --rm --network my_macvlan --ip $CUSTOM_IP_ADDRESS --name c3 mypython3
+docker run -itd --rm --network my_macvlan --ip $CUSTOM_IP_ADDRESS_2 --name c4 mypython3
 docker exec -it c3 python app/server.py
 ```
 
 Now to create TCP traffic flood, use the command below on another terminal:
 ```
-docker run -itd --rm --network my_macvlan --ip $CUSTOM_IP_ADDRESS_2 --name c4 mypython3
-docker exec -it c4 python app/client.py 192.168.8.245
+docker exec -it c4 python app/client.py $CUSTOM_IP_ADDRESS
 ```
 
 Start tracing and save results into a text file:
@@ -87,7 +90,7 @@ sudo perf script > macVLAN.txt
 
 
 # IPVLAN Mode:
-To make an IPVLAN network:
+Remove previous network:
 ```
 docker stop c3 c4
 docker network rm my_macvlan
@@ -101,13 +104,13 @@ YOUR_GATEWAY=192.168.8.1
 CUSTOM_IP_ADDRESS=192.168.8.245
 CUSTOM_IP_ADDRESS_2=192.168.8.246
 docker run -itd --rm --network my_ipvlan --ip $CUSTOM_IP_ADDRESS --name c5 mypython3
+docker run -itd --rm --network my_ipvlan --ip $CUSTOM_IP_ADDRESS_2 --name c6 mypython3
 docker exec -it c5 python app/server.py
 ```
 
 
-Now run the commands below in another terminal:
+Now run the commands below in another terminal to flood tcp messages:
 ```
-docker run -itd --rm --network my_ipvlan --ip $CUSTOM_IP_ADDRESS_2 --name c6 mypython3
 docker exec -it c6 python app/client.py 192.168.8.245
 ```
 
