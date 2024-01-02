@@ -34,8 +34,7 @@ docker exec -it c1 python app/server.py
 
 Open another terminal and run:
 ```
-docker exec -it c2 bash 
-python app/client.py 172.17.0.2/16
+docker exec -it c2 python app/client.py 172.17.0.2/16
 ```
 
 This will create a TCP traffic flow. Now we run the command below to capture kernel events:
