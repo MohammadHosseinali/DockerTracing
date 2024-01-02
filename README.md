@@ -1,4 +1,4 @@
-![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/d08cb9a2-27f1-413b-a69e-b7db6344561c)# DockerTracing
+# DockerTracing
 
 In this project we will trace docker networking modes and compare the difference between them and normal networking mode based on kernel functions.
 
