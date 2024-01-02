@@ -65,9 +65,7 @@ Now let's check the kernel codes to see what does each function do:
 
 - `br_dev_queue_push_xmit`: This function pushes a packet to the network interface queue for transmission.
 - `br_nf_post_routing`: This function applies the netfilter post-routing hooks to a packet after it has been forwarded by the bridge.
-- `nf_hook_slow`: This function is a generic function that calls the registered netfilter hooks for a given packet and protocol family.
 - `br_forward_finish`: This function performs some final operations on a packet before forwarding it, such as updating the statistics and freeing the skb.
-- `br_nf_hook_thresh`: This function is a helper function that calls the netfilter hooks for a given packet and threshold value.
 - `br_nf_forward_finish`: This function is a callback function that is invoked after the netfilter forward hooks have been applied to a packet.
 - `br_nf_forward_ip`: This function is a helper function that checks the IP header and checksum of a packet before forwarding it.
 - `__br_forward`: This function is the main function that forwards a packet to a given destination port.
