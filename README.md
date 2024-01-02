@@ -192,6 +192,7 @@ based on kernel codes:
 as we can see, `ipvlan_start_xmit` is exactly like `macvlan_start_xmit` that we described earlier, except it doesn't use netpoll mechanism.
 
 now for `ipvlan_queue_xmit`:
+
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/2ad4ab13-40e6-4989-89a3-6193a54b12ed)
 
 The function first gets the IPVLAN device and port information from the net_device structure, and checks if they are valid. If not, it frees the sk_buff structure and returns NET_XMIT_DROP, which indicates that the packet transmission failed.
