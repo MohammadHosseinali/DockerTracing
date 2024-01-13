@@ -74,6 +74,19 @@ Now let's check the kernel codes to see what does each function do:
 - `br_nf_pre_routing`: This function applies the netfilter pre-routing hooks to a packet before it is routed by the bridge.
 - `br_handle_frame`: This function is the entry point for handling a packet received by the bridge.
 
+In order to understand how does `br_dev_queue_push_xmit` works, we will use a function graph:
+
+```
+cd /sys/kernel/tracing
+echo br_dev_queue_push_xmit > set_graph_function
+echo function_graph > current_tracer
+echo 1 > tracing_on
+```
+And stop tracing:
+```
+echo 0 > tracing_on
+```
+
 **Performance difference:**
 
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/a203dd96-ee8c-4adf-af32-afd14b2d170d)
