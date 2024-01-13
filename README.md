@@ -63,16 +63,16 @@ sudo perf script > normal.txt
 As we can see, there are extra br_ functions in docker bridge mode
 Now let's check the kernel codes to see what does each function do:
 
-- `br_dev_queue_push_xmit`: This function pushes a packet to the network interface queue for transmission.
-- `br_nf_post_routing`: This function applies the netfilter post-routing hooks to a packet after it has been forwarded by the bridge.
-- `br_forward_finish`: This function performs some final operations on a packet before forwarding it, such as updating the statistics and freeing the skb.
-- `br_nf_forward_finish`: This function is a callback function that is invoked after the netfilter forward hooks have been applied to a packet.
-- `br_nf_forward_ip`: This function is a helper function that checks the IP header and checksum of a packet before forwarding it.
-- `__br_forward`: This function is the main function that forwards a packet to a given destination port.
-- `br_handle_frame_finish`: This function is a callback function that is invoked after the netfilter pre-routing hooks have been applied to a packet.
-- `br_nf_pre_routing_finish`: This function is a helper function that performs some checks and operations on a packet before routing it.
-- `br_nf_pre_routing`: This function applies the netfilter pre-routing hooks to a packet before it is routed by the bridge.
-- `br_handle_frame`: This function is the entry point for handling a packet received by the bridge.
+- `br_dev_queue_push_xmit`: Pushes a packet to the network interface queue for transmission.
+- `br_nf_post_routing`: Applies the netfilter post-routing hooks to a packet after it has been forwarded by the bridge.
+- `br_forward_finish`: Performs some final operations on a packet before forwarding it, such as updating the statistics and freeing the skb.
+- `br_nf_forward_finish`: A callback function that is invoked after the netfilter forward hooks have been applied to a packet.
+- `br_nf_forward_ip`: A helper function that checks the IP header and checksum of a packet before forwarding it.
+- `__br_forward`: The main function that forwards a packet to a given destination port.
+- `br_handle_frame_finish`: A callback function that is invoked after the netfilter pre-routing hooks have been applied to a packet.
+- `br_nf_pre_routing_finish`: A helper function that performs some checks and operations on a packet before routing it.
+- `br_nf_pre_routing`: Applies the netfilter pre-routing hooks to a packet before it is routed by the bridge.
+- `br_handle_frame`: The entry point for handling a packet received by the bridge.
 
 In order to understand how does `br_dev_queue_push_xmit` works, we will use a function graph:
 
