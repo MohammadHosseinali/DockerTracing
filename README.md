@@ -19,7 +19,7 @@ cd DockerTracing/
 docker build . -t mypython3
 ```
 
-# Bridge Mode
+# 1. Bridge Mode
 Docker default networking uses a bridge network driver, which creates a virtual network bridge on the host system and assigns an IP address to each container connected to the bridge. Containers on the same bridge network can communicate with each other using internal IP addresses, but they are isolated from containers on different bridge networks.
 
 By default, when you start Docker, a default bridge network (also called bridge) is created automatically, and newly-started containers connect to it unless otherwise specified. You can also create user-defined custom bridge networks, which have some advantages over the default bridge network, such as automatic DNS resolution between containers, better isolation, and more flexibility.
@@ -111,7 +111,7 @@ Let's explain what's happening:
 
 
 	
-# MACVLAN:
+# 2. MACVLAN:
 Docker MACVLAN networking works by assigning a unique MAC address to each container's virtual network interface, making it appear to be a physical device on the network. This allows the containers to communicate with other devices on the same network, without using NAT or port mapping.
 
 To create a MACVLAN network, you need to specify the driver, the subnet, the gateway, and the parent interface. You can also use the ip-range and aux-addresses options to exclude some IP addresses from being used by the containers. For example, to create a MACVLAN network, First you need to choose an unused ip from your router ip range and you can use these variables:
@@ -196,7 +196,7 @@ cat trace
 (`preempt_count_add` and `preempt_count_sub` are functions that increase and decrease the preempt count, which is a number that shows whether the current task can be interrupted by another task).
 
 
-# IPVLAN (L3):
+# 3. IPVLAN (L3):
 Docker IPVLAN networking works by creating a virtual network interface for each container that shares the same MAC address and IP address range as the parent interface on the host. This allows the containers to communicate with other devices on the same network without using NAT or port mapping.
 
 There are two modes of IPVLAN networking: L2 and L3. In L2 mode, the containers use ARP to resolve the IP addresses of other devices on the network. In L3 mode, the containers use IP routing to forward packets to other devices on the network.
