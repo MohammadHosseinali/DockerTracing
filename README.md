@@ -4,11 +4,11 @@ In this project we will trace docker networking modes and compare the difference
 
 # Tools
 
-1.Custom python script to create TCP traffic flow between client container and server container (files are available on repo)
+1. Custom Python script (files are available on repo)
 
-2.Perf
+2. Perf
 
-3.Ftrace
+3. Ftrace
 
 # Setup and config:
 
