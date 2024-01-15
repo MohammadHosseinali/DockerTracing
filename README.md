@@ -83,7 +83,7 @@ As we can see, the performance is about 1.6x better in normal networking mode wh
 
 **Ftrace:**
 
-In order to understand how does `br_dev_queue_push_xmit` works, we will use a function graph:
+In order to understand how does `br_dev_queue_push_xmit` work, we will use a function graph:
 
 ```
 sudo su
@@ -102,8 +102,7 @@ cat trace
 ```
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/b02b651e-ad39-465d-a2a8-6501bf250e36)
 
-The graph shows the time spent in each function call and the nested calls within them. So let's explain what's happening:
-
+Based on the kernel code, let's explain what's happening:
 
 `br_dev_queue_push_xmit` is the entry point for the bridge device transmission. It checks the packet size and checksum, and then pushes the Ethernet header to the packet. It also calls `dev_queue_xmit` to queue the packet for the network device.
 `__dev_queue_xmit` performs some validations and adjustments on the packet, such as checking the fragmentation. It also invokes the `dev_hard_start_xmit` function to start which is the function that calls the device driver's `hard_start_xmit` routine to send the packet. In this case, the device driver is `veth`, which is a virtual Ethernet pair device, therefore, `veth_xmit` forwards the packet to the `veth` device by cloning the timestamp and calling `__dev_forward_skb`. It also calls `__netif_rx` to deliver the packet to the network stack of the peer device.
@@ -129,12 +128,11 @@ To create a docker network on your subnet (Your VM should be on bridge mode):
 docker network create -d macvlan --subnet $YOUR_SUBNET --gateway $YOUR_GATEWAY -o parent=enp0s3 my_macvlan
 docker run -itd --rm --network my_macvlan --ip $CUSTOM_IP_ADDRESS --name c3 mypython3
 docker run -itd --rm --network my_macvlan --ip $CUSTOM_IP_ADDRESS_2 --name c4 mypython3
-docker exec -it c3 python app/server.py
 ```
 
-Now to create TCP traffic flood, use the command below on another terminal:
+Now to create TCP traffic flood, use the command below in the terminal:
 ```
-docker exec -it c4 python app/client.py $CUSTOM_IP_ADDRESS
+docker exec -it c3 python app/server.py > /dev/null 2>&1 & docker exec -it c4 python app/client.py $CUSTOM_IP_ADDRESS
 ```
 
 Start tracing and save results into a text file:
@@ -143,7 +141,7 @@ sudo perf record -ae 'net:*' --call-graph fp -- sleep 5
 sudo perf script > macVLAN.txt
 ```
 
-There is not much of a difference in called functions, except in start_xmit methods:
+There is not much of a difference in called functions, except in `start_xmit` methods:
 
 Normal mode:
 
@@ -155,16 +153,47 @@ MACVLAN mode:
 
 As we can see, normal networking contains `loopback_xmit` but MACVLAN has a `macvlan_start_xmit`
 
-The definition is in /drivers/net/macvlan.c:
+Based on the definition in /drivers/net/macvlan.c:
 
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/13e1ea55-026b-4eb4-a82e-81f50b5f0156)
 
-The code above first checks if netpoll is enabled (a mechanism for drivers to send and receive without interrupt). If it was, use this mechanism to send packet. Otherwise, put the packet in macvlan queue and if status is successful or is in congestion(CN) then increase number of sent packets and sent bytes pointer. Otherwise increase pointer of dropped packets. 
+The code above first checks if netpoll is enabled (a mechanism for drivers to send and receive without interrupt). If it was, then use this mechanism to send packet. Otherwise, put the packet in macvlan queue and if the status was successful or packet is in congestion(CN), then increase number of sent packets and sent bytes pointer. Otherwise increase pointer of dropped packets. 
 
-**Performance:**
-There is not much performance difference between this mode and previous (bridge) mode:
+**Number of functions called:**
+There is not much performance difference between this mode and previous docker networking mode (bridge) :
 
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/70d3771a-1daf-4dc4-a276-0465eaf33b29)
+
+
+
+**Ftrace:**
+
+In order to understand how does `macvlan_start_xmit` work, we will use a function graph:
+
+```
+sudo su
+```
+
+```
+cd /sys/kernel/tracing
+echo macvlan_start_xmit > set_graph_function
+echo function_graph > current_tracer
+echo 1 > tracing_on
+```
+And stop tracing:
+```
+echo 0 > tracing_on
+cat trace
+```
+
+![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/ecb657b2-14b0-46c9-800a-30fc100d1398)
+
+- `macvlan_start_xmit` is the first function that runs when a macvlan device wants to send a packet to another device. It finds the right device to send the packet (By the destination's MAC address) and then calls `dev_forward_skb` which is a function that helps to send a packet to another device. It calls `__dev_forward_skb2` to do some changes on the packet, such as setting the type of the packet.
+- `skb_scrub_packet` removes some information from the packet that is not needed anymore.
+- `netif_rx_internal` Puts the packet in a queue to be processed later by the CPU. It uses a spin lock to protect the queue and changes the preempt count to avoid being interrupted by another task.
+- `enqueue_to_backlog` Adds the packet to the queue and tells the CPU to process it later.
+(`_raw_spin_lock_irqsave` and `_raw_spin_unlock_irqrestore` are functions that lock and unlock the queue while saving and restoring the interrupt flags).
+(`preempt_count_add` and `preempt_count_sub` are functions that increase and decrease the preempt count, which is a number that shows whether the current task can be interrupted by another task).
 
 
 # IPVLAN (L3):
@@ -172,29 +201,28 @@ Docker IPVLAN networking works by creating a virtual network interface for each 
 
 There are two modes of IPVLAN networking: L2 and L3. In L2 mode, the containers use ARP to resolve the IP addresses of other devices on the network. In L3 mode, the containers use IP routing to forward packets to other devices on the network.
 
-To create an ipvlan network, first you need to remove previous network:
+You need to specify the subnet, the gateway, and the parent interface:
 ```
 YOUR_SUBNET=192.168.8.0/24
 YOUR_GATEWAY=192.168.8.1
 CUSTOM_IP_ADDRESS=192.168.8.245
 CUSTOM_IP_ADDRESS_2=192.168.8.246
-docker stop c3 c4
-docker network rm my_macvlan
+```
+
+To create an ipvlan network, first we need to remove previous docker network:
+
+```
+docker stop c3 c4			#Stop previous containers if they are running
+docker network rm my_macvlan		#Remove previous network
 docker network create -d ipvlan --subnet $YOUR_SUBNET --gateway $YOUR_GATEWAY -o parent=enp0s3 my_ipvlan
-```
-
-Then, you need to specify the driver, the subnet, the gateway, and the parent interface. For example, to create an IPVLAN network named my_ipvlan, associated with the enp0s3 interface on the Docker host, you can use the following command:
-
-```
 docker run -itd --rm --network my_ipvlan --ip $CUSTOM_IP_ADDRESS --name c5 mypython3
 docker run -itd --rm --network my_ipvlan --ip $CUSTOM_IP_ADDRESS_2 --name c6 mypython3
-docker exec -it c5 python app/server.py
 ```
 
 
-Now run the commands below in another terminal to flood tcp messages:
+Now to flood tcp messages:
 ```
-docker exec -it c6 python app/client.py $CUSTOM_IP_ADDRESS
+docker exec -it c5 python app/server.py > /dev/null 2>&1 & docker exec -it c6 python app/client.py $CUSTOM_IP_ADDRESS
 ```
 
 Then start tracing and save results to a text file:
@@ -217,7 +245,7 @@ based on kernel codes:
 
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/9d66c714-5367-48ea-b4bc-9f845482f3e3)
 
-as we can see, `ipvlan_start_xmit` is exactly like `macvlan_start_xmit` that we described earlier, except it doesn't use netpoll mechanism.
+As we can see in the code below, `ipvlan_start_xmit` is exactly like `macvlan_start_xmit` that we described earlier, except it doesn't use **netpoll** mechanism.
 
 now for `ipvlan_queue_xmit`:
 
@@ -231,11 +259,32 @@ Next, the function switches on the mode of the IPVLAN port, which can be either 
 
 Finally, the function has a default case that should not be reached, as it means that the IPVLAN port has an invalid mode. In this case, the function prints a warning message.
 
-**Performance:**
+
+**Number of funcions called:**
 The performance of IPVLAN mode is significantly worse than any other mode:
 
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/80de3909-85ad-4b96-987e-a11ea32a0bb3)
 
 As we can see IPVLAN mode could only send about 5000 packets which is 6x lower than normal networking mode.
 
+**Ftrace:**
+In order to understand how does `ipvlan_start_xmit` work, we will use a function graph:
+
+```
+sudo su
+```
+
+```
+cd /sys/kernel/tracing
+echo ipvlan_start_xmit > set_graph_function
+echo function_graph > current_tracer
+echo 1 > tracing_on
+```
+And stop tracing:
+```
+echo 0 > tracing_on
+cat trace
+```
+
+![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/081acf2d-38c6-41c0-b1af-b35f34b4bd93)
 
