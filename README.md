@@ -104,7 +104,7 @@ cat trace
 
 Let's explain what's happening:
 
-`br_dev_queue_push_xmit` is the API for the bridge device. It checks the packet size and checksum, and then pushes the Ethernet header to the packet. It also calls `__dev_queue_xmit` to queue the packet for the network device.
+`br_dev_queue_push_xmit` checks the packet size and checksum, and then pushes the Ethernet header to the packet. It then calls `__dev_queue_xmit` to queue the packet for the network device.
 `__dev_queue_xmit` performs some validations and adjustments on the packet, such as checking the fragmentation. It also invokes the `dev_hard_start_xmit` function to start which is the function that calls the device driver's `hard_start_xmit` routine to send the packet. In this case, the device driver is `veth`, which is a virtual Ethernet pair device, therefore, `veth_xmit` forwards the packet to the `veth` device by cloning the timestamp and calling `__dev_forward_skb`. It also calls `__netif_rx` to deliver the packet to the network stack of the peer device.
 `__dev_forward_skb` is a helper function that forwards a packet to another device by scrubbing the packet and changing the Ethernet type.
 `__netif_rx` is the function that receives a packet from a device and passes it to the network stack. It calls `netif_rx_internal` which is a function that enqueues a packet to the backlog queue of the current CPU. It acquires and releases a spin lock to protect the queue, and increments and decrements the preempt count to disable and enable preemption.
@@ -289,7 +289,7 @@ cat trace
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/cb820315-3c76-4222-8cc0-1c03f2f68d79)
 
 
-`ipvlan_start_xmit` is the API for the ipvlan network driver. It is called when a packet needs to be transmitted from the ipvlan device. First, it calls the `ipvlan_queue_xmit` function to queue the packet for transmission by the ipvlan device, Which also calls the `ipvlan_get_L3_hdr` function to get the layer 3 header of the packet (This function checks the Ethernet type field of the packet and returns the appropriate offset). Then it calls the `ipvlan_addr_lookup` function to find the destination ipvlan device based on the layer 3 address. Finally, it calls the `ipvlan_rcv_frame.isra.0` function to forward the packet to the destination device and does this job by calling the `dev_forward_skb` function to clone the packet and send it to the ipvlan device (Which also updates the statistics of the ipvlan device).
+`ipvlan_start_xmit` is called when a packet needs to be transmitted from the ipvlan device. First, it calls the `ipvlan_queue_xmit` function to queue the packet for transmission by the ipvlan device, Which also calls the `ipvlan_get_L3_hdr` function to get the layer 3 header of the packet (This function checks the Ethernet type field of the packet and returns the appropriate offset). Then it calls the `ipvlan_addr_lookup` function to find the destination ipvlan device based on the layer 3 address. Finally, it calls the `ipvlan_rcv_frame.isra.0` function to forward the packet to the destination device and does this job by calling the `dev_forward_skb` function to clone the packet and send it to the ipvlan device (Which also updates the statistics of the ipvlan device).
 
 The rest of the functions are similar to other networking modes.
 
