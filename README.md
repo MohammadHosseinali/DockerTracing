@@ -157,7 +157,7 @@ Based on the definition in /drivers/net/macvlan.c:
 
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/13e1ea55-026b-4eb4-a82e-81f50b5f0156)
 
-The code above first checks if netpoll is enabled (a mechanism for drivers to send and receive without interrupt). If it was, then use this mechanism to send packet. Otherwise, put the packet in macvlan queue and if the status was successful or packet is in congestion(CN), then increase number of sent packets and sent bytes pointer. Otherwise increase pointer of dropped packets. 
+The code above first checks if netpoll is enabled (a mechanism for drivers to send and receive without interrupt). If it was, then uses this mechanism to send packet. Otherwise, puts the packet in macvlan queue and if the status was successful or packet is in congestion(CN) and increases number of sent packets and bytes (or number of dropped packets). It does this job with the help of `u64_stats_update_begin` and `u64_stats_update_end` (which helps to avoid critical region problem).
 
 **Number of functions called:**
 There is not much performance difference between this mode and previous docker networking mode (bridge) :
@@ -251,11 +251,11 @@ now for `ipvlan_queue_xmit`:
 
 ![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/2ad4ab13-40e6-4989-89a3-6193a54b12ed)
 
-The function first gets the IPVLAN device and port information from the net_device structure, and checks if they are valid. If not, it frees the sk_buff structure and returns NET_XMIT_DROP, which indicates that the packet transmission failed.
+The function first gets the IPVLAN device and port information from the input and checks if they are valid. If not, `out` will be called (frees the sk_buff structure and returns NET_XMIT_DROP, which indicates that the packet transmission failed).
 
 Then, the function checks if the sk_buff structure has enough data to pull out an Ethernet header, which is needed to determine the destination MAC address of the packet. If not, it also frees the sk_buff structure and returns NET_XMIT_DROP.
 
-Next, the function switches on the mode of the IPVLAN port, which can be either IPVLAN_MODE_L2, IPVLAN_MODE_L3, or IPVLAN_MODE_L3S. These modes determine how the IPVLAN device handles the packet forwarding and routing. Depending on the mode, the function calls either ipvlan_xmit_mode_l2 or ipvlan_xmit_mode_l3, which are helper functions that implement the specific logic for each mode. These functions return either NET_XMIT_SUCCESS, which indicates that the packet transmission succeeded, or NET_XMIT_DROP, which indicates that the packet transmission failed.
+Next, the function switches on the mode of the IPVLAN port, which can be either `IPVLAN_MODE_L2`, `IPVLAN_MODE_L3`, or `IPVLAN_MODE_L3S`. These modes determine how the IPVLAN device handles the packet forwarding and routing. Depending on the mode, the function calls either one of them, which are helper functions. These functions return either `NET_XMIT_SUCCESS`, which indicates that the packet transmission succeeded, or `NET_XMIT_DROP`, which indicates that the packet transmission failed.
 
 Finally, the function has a default case that should not be reached, as it means that the IPVLAN port has an invalid mode. In this case, the function prints a warning message.
 
