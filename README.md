@@ -74,6 +74,15 @@ Now let's check the kernel codes to see what does each function do:
 - `br_nf_pre_routing`: Applies the netfilter pre-routing hooks to a packet before it is routed by the bridge.
 - `br_handle_frame`: The entry point for handling a packet received by the bridge.
 
+
+**Number of function calls:**
+
+![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/a203dd96-ee8c-4adf-af32-afd14b2d170d)
+
+As we can see, the performance is about 1.6x better in normal networking mode which makes sense.
+
+**Ftrace:**
+
 In order to understand how does `br_dev_queue_push_xmit` works, we will use a function graph:
 
 ```
@@ -89,21 +98,17 @@ echo 1 > tracing_on
 And stop tracing:
 ```
 echo 0 > tracing_on
+cat trace
 ```
+![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/b02b651e-ad39-465d-a2a8-6501bf250e36)
+
 The graph shows the time spent in each function call and the nested calls within them. So let's explain what's happening:
+
 
 `br_dev_queue_push_xmit` is the entry point for the bridge device transmission. It checks the packet size and checksum, and then pushes the Ethernet header to the packet. It also calls `dev_queue_xmit` to queue the packet for the network device.
 `__dev_queue_xmit` performs some validations and adjustments on the packet, such as checking the fragmentation. It also invokes the `dev_hard_start_xmit` function to start which is the function that calls the device driver's `hard_start_xmit` routine to send the packet. In this case, the device driver is `veth`, which is a virtual Ethernet pair device, therefore, `veth_xmit` forwards the packet to the `veth` device by cloning the timestamp and calling `__dev_forward_skb`. It also calls `__netif_rx` to deliver the packet to the network stack of the peer device.
 `__dev_forward_skb` is a helper function that forwards a packet to another device by scrubbing the packet and changing the Ethernet type.
-
 `__netif_rx` is the function that receives a packet from a device and passes it to the network stack. It calls `netif_rx_internal` which is a function that enqueues a packet to the backlog queue of the current CPU. It acquires and releases a spin lock to protect the queue, and increments and decrements the preempt count to disable and enable preemption.
-
-
-**Performance difference:**
-
-![image](https://github.com/MohammadHosseinali/DockerTracing/assets/57370539/a203dd96-ee8c-4adf-af32-afd14b2d170d)
-
-As we can see, the performance is about 1.6x better in normal connection mode which makes sense.
 
 
 	
