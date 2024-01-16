@@ -1,6 +1,6 @@
 # DockerTracing
 
-In this project we will trace docker networking modes and compare the difference between them and normal networking mode based on kernel functions.
+In this project we will trace docker networking modes and compare the difference between them and normal networking mode based on kernel tracing.
 
 
 
