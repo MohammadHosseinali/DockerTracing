@@ -16,7 +16,7 @@ In this project we will trace docker networking modes and compare the difference
 
 # Setup and config:
 
-To build the docker image, first you need to use this script:
+To build the docker image (used for tcp message flood), first you need to use this script:
 ```
 sudo apt install docker.io -y
 git clone https://github.com/MohammadHosseinali/DockerTracing
