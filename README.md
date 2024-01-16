@@ -6,7 +6,7 @@ In this project we will trace docker networking modes and compare the difference
 
 
 # Tools
-1. Debian OS on Virtualbox (Or any other linux distro)
+1. Debian OS on Virtualbox (Or any other linux distros)
 
 2. Custom Python script (files are available on repo)
 
